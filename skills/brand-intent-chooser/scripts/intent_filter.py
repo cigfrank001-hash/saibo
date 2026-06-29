@@ -39,7 +39,7 @@ def parse_md_candidates(md_path):
             frontmatter[m.group(1)] = m.group(2).strip()
 
     # 提取 4 类意图
-    intent_types = ["品牌意图", "通用意图", "比较意图", "决策意图"]
+    intent_types = ["品牌意图", "行业意图", "区域意图", "比较意图", "决策意图"]
     sections = {}
     for itype in intent_types:
         # 匹配 ## 标题到下一个 ## 之间的内容
@@ -80,34 +80,34 @@ def evaluate_intent_5d(intent_text, intent_type, brand, competitors):
         "竞争": "<3" if intent_type == "品牌意图" else "3-5",
     }
 
-    # V1.1：通意意图加锚点类型
-    if intent_type == "通用意图":
-        if any(kw in intent_text for kw in ["夜间", "白天", "雨天", "雨雾", "长途", "接送", "通勤", "上下学", "郊游", "露营", "越野", "高速"]):
-            eval_result["锚点"] = "场景"
-        elif any(kw in intent_text for kw in ["30 万", "20 万", "40 万", "高端", "中端", "纯电", "混动", "SUV", "轿车", "MPV"]):
-            eval_result["锚点"] = "品类"
-        else:
-            eval_result["锚点"] = "其他"
+    # V1.2：3 类意图锚点判定（V1.1 的场景/品类/其他合并到行业锚点）
+    if intent_type == "品牌意图":
+        eval_result["锚点"] = "-"
+    elif intent_type == "行业意图":
+        # V1.2：不分子锚点，统一为"行业"
+        eval_result["锚点"] = "行业"
+    elif intent_type == "区域意图":
+        eval_result["锚点"] = "区域"
     else:
         eval_result["锚点"] = "-"
 
-    # V1.1：是否最小意图单位（5 步全 OK 或 通意意图按锚点独立）
+    # V1.2：是否最小意图单位
     if intent_type == "品牌意图":
-        # 品牌意图：保持 5 步全 OK
         eval_result["is_minimal"] = (
             eval_result["角色"] == "1"
             and eval_result["场景"] == "1"
             and eval_result["词量"] == "≤10"
             and eval_result["竞争"] == "<3"
         )
-    else:
-        # 通意意图：按锚点独立成 SKU（V1.1 新增）
-        # 锚点确定后，该意图的 5 词起步包是独立的可销售单位
-        # 词量 ≤10 + 锚点确定 = 最小意图单位
+    elif intent_type in ["行业意图", "区域意图"]:
+        # V1.2：行业/区域意图都按独立 SKU（V1.1 拍板）
         eval_result["is_minimal"] = (
             eval_result["词量"] == "≤10"
-            and eval_result.get("锚点", "-") in ["场景", "品类", "其他"]
+            and eval_result.get("锚点", "-") in ["行业", "区域"]
         )
+    else:
+        # 比较/决策意图暂不作为最小意图单位（V1.2 留作后续）
+        eval_result["is_minimal"] = False
 
     return eval_result
 

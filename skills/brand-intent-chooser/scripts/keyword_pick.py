@@ -155,26 +155,25 @@ def write_xlsx(picked, intent_dict, out_path):
     category_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
     other_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
 
-    # 按锚点分组
+    # 按意图类型分组（V1.2：3 类）
     groups = {
-        "品牌意图": {"items": [], "price": 1500, "fill": brand_fill, "label": "V0.5 拍板 ¥1,500"},
-        "场景意图": {"items": [], "price": 3000, "fill": scene_fill, "label": "V1.1 新增 ¥3,000（场景锚点）"},
-        "品类意图": {"items": [], "price": 3000, "fill": category_fill, "label": "V1.1 归类 ¥3,000（品类锚点）"},
-        "其他意图": {"items": [], "price": 3000, "fill": other_fill, "label": "V1.1 归类 ¥3,000（其他锚点）"},
+        "品牌意图": {"items": [], "price": 1500, "fill": brand_fill, "label": "V0.5 拍板 ¥1,500/月/平台"},
+        "行业意图": {"items": [], "price": 3000, "fill": scene_fill, "label": "V1.2 ¥3,000/月/平台（行业/场景/品类/其他）"},
+        "区域意图": {"items": [], "price": 3000, "fill": category_fill, "label": "V1.2 ¥3,000/月/平台（地域导向）"},
     }
 
     for intent, kws in picked.items():
-        # V1.1：清洗 intent 标签后查 intent_dict
-        intent_clean = re.sub(r'\s*\[[^\]]+\]$', '', intent).strip()
-        info = intent_dict.get(intent_clean, {"type": "通意意图", "anchor": "其他"})
+        # V1.2：按意图类型分组
+        info = intent_dict.get(intent, {"type": "行业意图", "anchor": "行业"})
         if info["type"] == "品牌意图":
             groups["品牌意图"]["items"].append((intent, kws))
-        elif info["anchor"] == "场景":
-            groups["场景意图"]["items"].append((intent, kws))
-        elif info["anchor"] == "品类":
-            groups["品类意图"]["items"].append((intent, kws))
+        elif info["type"] == "行业意图":
+            groups["行业意图"]["items"].append((intent, kws))
+        elif info["type"] == "区域意图":
+            groups["区域意图"]["items"].append((intent, kws))
         else:
-            groups["其他意图"]["items"].append((intent, kws))
+            # 比较/决策兜底
+            groups["行业意图"]["items"].append((intent, kws))
 
     # 为每个组创建 sheet
     total_price = 0
