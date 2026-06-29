@@ -1,0 +1,15 @@
+{
+  "version": "1.0",
+  "created_at": "2026-06-29T09:45:00",
+  "brand": "{品牌名}",
+  "industry": "{行业}",
+  "main_product": "{主营产品/服务}",
+  "target_persona": "{目标用户角色（1 个身份为主）}",
+  "main_scenario": "{主要使用场景（1 个情境为主）}",
+  "competitors": ["{竞品1}", "{竞品2}", "{竞品3}", "{竞品4}", "{竞品5}"],
+  "metadata": {
+    "skill": "brand-intent-chooser",
+    "stage": 1,
+    "next_stage": "intent_diverge.py"
+  }
+}
