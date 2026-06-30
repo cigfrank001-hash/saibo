@@ -140,10 +140,26 @@ def collect_and_pick(results_file):
 
 def calc_platform_price(platforms, base=6000, half=3000):
     """V1.3 平台阶梯：第 1 平台全价，第 2+ 全部半价。
-    例：1=¥6,000, 2=¥9,000, 3=¥12,000, N=¥6,000+(N-1)*¥3,000"""
+    行业意图：base=6000, half=3000（2 平台=¥9,000, 3 平台=¥12,000）
+    区域意图：base=3000, half=1500（2 平台=¥4,500, 3 平台=¥6,000）"""
     if platforms < 1:
         return 0
     return base + max(0, platforms - 1) * half
+
+
+def get_unit_price(intent_type, platforms=1):
+    """V1.3 按意图类型 + 平台数计算单价
+    - 品牌: ¥1,500/月/平台（无阶梯）
+    - 行业: base=6000, half=3000
+    - 区域: base=3000, half=1500"""
+    if intent_type == "品牌意图":
+        return 1500 * platforms
+    elif intent_type == "行业意图":
+        return calc_platform_price(platforms, base=6000, half=3000)
+    elif intent_type == "区域意图":
+        return calc_platform_price(platforms, base=3000, half=1500)
+    else:
+        return 0
 
 
 def write_xlsx(picked, intent_dict, out_path, platforms=1):
@@ -165,26 +181,26 @@ def write_xlsx(picked, intent_dict, out_path, platforms=1):
     category_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
     other_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
 
-    # V1.3 平台阶梯价（按锚点）
-    brand_unit = 1500  # 品牌意图单价不变（V0.5 沿用）
-    industry_unit_full = 6000   # 行业意图全价（第 1/3/5 平台）
-    industry_unit_half = 3000   # 行业意图半价（第 2/4/6 平台）
+    # V1.3 按意图类型定价（品牌不变 / 行业阶梯 / 区域阶梯）
+    brand_unit = 1500  # 品牌意图 ¥1,500/月/平台 固定（V0.5 沿用，不变）
+    industry_unit = calc_platform_price(platforms, base=6000, half=3000)
+    region_unit = calc_platform_price(platforms, base=3000, half=1500)
 
-    # 按意图类型分组（V1.3：3 类，平台阶梯）
+    # 按意图类型分组（V1.3：3 类，类型独立定价）
     if platforms == 1:
-        industry_label = f"V1.3 ¥{industry_unit_full:,}/意图（第1平台）"
+        industry_label = f"V1.3 行业意图 ¥{industry_unit:,}/意图（基础价）"
+        region_label = f"V1.3 区域意图 ¥{region_unit:,}/意图（基础价）"
     else:
-        # 第1平台全价，第2+全部半价
-        extra = (platforms - 1) * industry_unit_half
-        industry_label = f"V1.3 第1平台¥{industry_unit_full:,}+第2-{platforms}平台半价×{platforms-1}=¥{calc_platform_price(platforms):,}/意图"
+        industry_label = f"V1.3 行业意图：第1平台¥6,000+第2-{platforms}平台半价×{platforms-1}=¥{industry_unit:,}/意图"
+        region_label = f"V1.3 区域意图：第1平台¥3,000+第2-{platforms}平台半价×{platforms-1}=¥{region_unit:,}/意图"
 
     groups = {
         "品牌意图": {"items": [], "price": brand_unit, "fill": brand_fill,
                   "label": "V0.5 拍板 ¥1,500/月/平台（品牌意图不变）"},
-        "行业意图": {"items": [], "price": calc_platform_price(platforms), "fill": scene_fill,
+        "行业意图": {"items": [], "price": industry_unit, "fill": scene_fill,
                   "label": industry_label},
-        "区域意图": {"items": [], "price": calc_platform_price(platforms), "fill": category_fill,
-                  "label": f"V1.3 ¥{calc_platform_price(platforms):,}/意图（区域意图 = 平台阶梯）"},
+        "区域意图": {"items": [], "price": region_unit, "fill": category_fill,
+                  "label": region_label},
     }
 
     for intent, kws in picked.items():
