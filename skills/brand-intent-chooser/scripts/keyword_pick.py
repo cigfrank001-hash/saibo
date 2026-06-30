@@ -6,7 +6,7 @@ keyword_pick.py - Stage 4: 5 词选词（强相关原则）
 半自动：对每个最小意图生成"5 平台 × 20 次"跑词 prompt
        收集 100 次结果后，自动去重 + 强相关筛选
        5 词 = 锚定词 1 + 强相关 4
-输出：5 词起步包 xlsx（直接对接报价表 V1.0）
+输出：5 词起步包 xlsx（直接对接报价表 V1.3）
 """
 
 import argparse
@@ -138,8 +138,18 @@ def collect_and_pick(results_file):
     return picked
 
 
-def write_xlsx(picked, intent_dict, out_path):
-    """写 5 词起步包 xlsx（V1.1：按锚点分组多 sheet）"""
+def calc_platform_price(platforms, base=6000, half=3000):
+    """V1.3 平台阶梯：第 1 平台全价，第 2+ 全部半价。
+    例：1=¥6,000, 2=¥9,000, 3=¥12,000, N=¥6,000+(N-1)*¥3,000"""
+    if platforms < 1:
+        return 0
+    return base + max(0, platforms - 1) * half
+
+
+def write_xlsx(picked, intent_dict, out_path, platforms=1):
+    """写 5 词起步包 xlsx（V1.3：按平台阶梯计费）
+    platforms: GEO 内容覆盖平台数（1=¥6,000/意图, 2=¥9,000/意图, 3=¥15,000/意图, ...）
+    """
     from openpyxl import Workbook
 
     wb = Workbook()
@@ -155,11 +165,26 @@ def write_xlsx(picked, intent_dict, out_path):
     category_fill = PatternFill(start_color="E2EFDA", end_color="E2EFDA", fill_type="solid")
     other_fill = PatternFill(start_color="F2F2F2", end_color="F2F2F2", fill_type="solid")
 
-    # 按意图类型分组（V1.2：3 类）
+    # V1.3 平台阶梯价（按锚点）
+    brand_unit = 1500  # 品牌意图单价不变（V0.5 沿用）
+    industry_unit_full = 6000   # 行业意图全价（第 1/3/5 平台）
+    industry_unit_half = 3000   # 行业意图半价（第 2/4/6 平台）
+
+    # 按意图类型分组（V1.3：3 类，平台阶梯）
+    if platforms == 1:
+        industry_label = f"V1.3 ¥{industry_unit_full:,}/意图（第1平台）"
+    else:
+        # 第1平台全价，第2+全部半价
+        extra = (platforms - 1) * industry_unit_half
+        industry_label = f"V1.3 第1平台¥{industry_unit_full:,}+第2-{platforms}平台半价×{platforms-1}=¥{calc_platform_price(platforms):,}/意图"
+
     groups = {
-        "品牌意图": {"items": [], "price": 1500, "fill": brand_fill, "label": "V0.5 拍板 ¥1,500/月/平台"},
-        "行业意图": {"items": [], "price": 3000, "fill": scene_fill, "label": "V1.2 ¥3,000/月/平台（行业/场景/品类/其他）"},
-        "区域意图": {"items": [], "price": 3000, "fill": category_fill, "label": "V1.2 ¥3,000/月/平台（地域导向）"},
+        "品牌意图": {"items": [], "price": brand_unit, "fill": brand_fill,
+                  "label": "V0.5 拍板 ¥1,500/月/平台（品牌意图不变）"},
+        "行业意图": {"items": [], "price": calc_platform_price(platforms), "fill": scene_fill,
+                  "label": industry_label},
+        "区域意图": {"items": [], "price": calc_platform_price(platforms), "fill": category_fill,
+                  "label": f"V1.3 ¥{calc_platform_price(platforms):,}/意图（区域意图 = 平台阶梯）"},
     }
 
     for intent, kws in picked.items():
@@ -249,7 +274,7 @@ def write_xlsx(picked, intent_dict, out_path):
         row += 1
 
     row += 1
-    ws_total.cell(row=row, column=1, value=f"💰 总报价：¥{total_price:,}（直接对接报价表 V1.1）").font = Font(bold=True, color="C00000", size=12)
+    ws_total.cell(row=row, column=1, value=f"💰 总报价：¥{total_price:,}（直接对接报价表 V1.3）").font = Font(bold=True, color="C00000", size=12)
     ws_total.merge_cells(start_row=row, start_column=1, end_row=row, end_column=5)
     row += 1
     ws_total.cell(row=row, column=1, value=f"📌 档位：精准意图 1x（V1.1 拍板）").font = Font(italic=True, color="1F4E78")
@@ -266,6 +291,8 @@ def main():
     parser.add_argument("--input", required=True, help="Stage 3 输出（最小意图清单 xlsx）")
     parser.add_argument("--collect", action="store_true", help="收集模式")
     parser.add_argument("--results", help="收集的结果 JSON")
+    parser.add_argument("--platforms", type=int, default=1,
+                       help="GEO 内容覆盖平台数（V1.3：1=¥6,000/意图, 2=¥9,000/意图 阶梯半价）")
     args = parser.parse_args()
 
     # 读取 Stage 3 输出
@@ -309,8 +336,9 @@ def main():
             intent_dict[intent_clean] = {"type": i[1], "anchor": i[2]}
         today = datetime.now().strftime("%Y%m%d")
         out_path = OUTPUT_DIR / f"5词起步包-{brand}-{today}.xlsx"
-        write_xlsx(picked, intent_dict, out_path)
+        write_xlsx(picked, intent_dict, out_path, platforms=args.platforms)
         print(f"\n✅ 5 词起步包已保存：{out_path}")
+        print(f"📌 平台数={args.platforms}, 行业意图单价=¥{calc_platform_price(args.platforms):,}/意图")
     else:
         # generate_all_prompts 用 (text, type, anchor) 列表
         all_prompts = generate_all_prompts([(i[0], "", "") for i in intents], brand, "")
