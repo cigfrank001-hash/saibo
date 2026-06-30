@@ -39,7 +39,7 @@ def parse_md_candidates(md_path):
             frontmatter[m.group(1)] = m.group(2).strip()
 
     # 提取 4 类意图
-    intent_types = ["品牌意图", "行业意图", "区域意图", "比较意图", "决策意图"]
+    intent_types = ["品牌意图", "行业意图", "区域意图"]  # V1.3 拍板：合并原比较+决策到品牌意图
     sections = {}
     for itype in intent_types:
         # 匹配 ## 标题到下一个 ## 之间的内容
@@ -106,7 +106,7 @@ def evaluate_intent_5d(intent_text, intent_type, brand, competitors):
             and eval_result.get("锚点", "-") in ["行业", "区域"]
         )
     else:
-        # 比较/决策意图暂不作为最小意图单位（V1.2 留作后续）
+        # V1.3：仅 3 类意图，其他类型不算最小意图单位
         eval_result["is_minimal"] = False
 
     return eval_result

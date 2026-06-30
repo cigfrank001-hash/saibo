@@ -197,7 +197,7 @@ def write_xlsx(picked, intent_dict, out_path, platforms=1):
         elif info["type"] == "区域意图":
             groups["区域意图"]["items"].append((intent, kws))
         else:
-            # 比较/决策兜底
+            # V1.3：仅 3 类意图，其他未匹配（兜底进行业意图，但实际不会出现）
             groups["行业意图"]["items"].append((intent, kws))
 
     # 为每个组创建 sheet
