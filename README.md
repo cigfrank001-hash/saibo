@@ -130,3 +130,13 @@ saibo/
 ---
 
 *本仓库由 OpenClaw Agent 自动维护（Frank + 小赛博协作）*
+
+## 🔗 相关仓库
+
+- **[saibo-knowlegde](https://github.com/cigfrank001-hash/saibo-knowlegde)**（私有）— Frank 的赛博专属知识库（K+P 镜像），2026-06-30 同步完成
+
+## 📝 最新更新（2026-06-30）
+
+- **brand-intent-chooser V1.3**：
+  - 价格模型：行业意图阶梯 ¥6,000 起步，第 2+ 平台半价（commit `894cca8`）
+  - 意图分类：5 类→3 类，合并"比较意图"+"决策意图"到品牌意图（commit `d97b647`）
